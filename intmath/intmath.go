@@ -1,5 +1,7 @@
 package intmath
 
+import "math/bits"
+
 type Integer interface {
 	Signed | Unsigned
 }
@@ -23,23 +25,23 @@ func Abs[T Signed](x T) T {
 
 // Returns square root of non-negative integer x, truncated.
 func Sqrt[T Unsigned](x T) T {
-	if x < 2 {
-		return x // sqrt(0)=0, sqrt(1)=1
+	if x == 0 { // special case to avoid division by zero in main algorithm
+		return 0
 	}
-
-	// Half-open binary search for last i such that i * i <= x.
-	// I.e., first i such that i * i > x, then - 1.
-	var l T = 1       // square(1) <= x for all x >= 2, making this an appropriate lower bound
-	var r T = x/2 + 1 // square(x/2 + 1) > x for all x >= 2, making this an appropriate upper bound
-	for l < r {
-		m := (l + r) / 2
-		if m <= x/m {
-			l = m + 1
-		} else {
-			r = m
+	// Want to find r such that r² == x.
+	// let f(r) = r² − x, solve f(r) = 0 with Newton-Raphson method: r <- r - \frac{f(r)}{f'(r)}.
+	// I.e., r <- (r + (x / r)) / 2.
+	// Due to convexity of graph of r² − x, if start with r > sqrt(x), iterations will not
+	// "flip-flop": first time it becomes <= sqrt(x) must be the answer.
+	// Use 2^ceil(bitlen/2) (guaranteed > sqrt(x)) as initial guess for r.
+	var r T = 1 << ((bits.Len64(uint64(x)) + 1) / 2)
+	for {
+		q := x / r
+		if r <= q { // r*r <= x
+			return r
 		}
+		r = (r + q) / 2
 	}
-	return l - 1
 }
 
 // Returns x ** p for integer x and non-negative integer p.
