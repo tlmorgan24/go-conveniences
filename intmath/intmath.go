@@ -16,7 +16,7 @@ type Unsigned interface {
 
 // Returns absolute value of x. Note, if x is the minimum value of its type, the result overflows
 // and stays negative. E.g. Abs(int8(-128)) -> -128.
-func Abs[T Signed](x T) T {
+func Abs[T Integer](x T) T {
 	if x < 0 {
 		x = -x
 	}
@@ -24,7 +24,10 @@ func Abs[T Signed](x T) T {
 }
 
 // Returns square root of non-negative integer x, truncated.
-func Sqrt[T Unsigned](x T) T {
+func Sqrt[T Integer](x T) T {
+	if x < 0 {
+		panic("radicand must be non-negative")
+	}
 	if x == 0 { // special case to avoid division by zero in main algorithm
 		return 0
 	}
@@ -46,7 +49,10 @@ func Sqrt[T Unsigned](x T) T {
 
 // Returns x ** p for integer x and non-negative integer p.
 // Returns same type as x; it is caller's responsibility to ensure no overflow.
-func Pow[T Integer, P Unsigned](x T, p P) T {
+func Pow[T, P Integer](x T, p P) T {
+	if p < 0 {
+		panic("exponent must be non-negative")
+	}
 	var res T = 1
 	for p > 0 {
 		// E.g.:
@@ -63,14 +69,23 @@ func Pow[T Integer, P Unsigned](x T, p P) T {
 	return res
 }
 
-// Returns log of x, base b, truncated, where both are non-negative integers.
-func Log[T Unsigned](b, x T) T {
-	if b < 2 || x == 0 {
-		panic("invalid argument")
+// Returns log of x, base b, truncated, where both are positive integers.
+func Log[B, T Integer](b B, x T) T {
+	if b < 2 {
+		panic("base must be >= 2")
 	}
+	if x <= 0 {
+		panic("argument must be > 0")
+	}
+	// Operations between the two potentially different types would not compile. So, ensure b <= x,
+	// then convert b to same type as x.
+	if uint64(b) > uint64(x) {
+		return 0
+	}
+	tb := T(b)
 	var res T
-	for x >= b {
-		x /= b
+	for x >= tb {
+		x /= tb
 		res++
 	}
 	return res
